@@ -257,3 +257,10 @@ model FamilyConnection {
   // Prevents adding the same sister twice
   @@unique([userId, connectedUserId]) 
 }
+
+model Achievement {
+  id          String   @id @default(cuid())
+  title       String
+  description String
+  createdAt   DateTime @default(now())
+}
