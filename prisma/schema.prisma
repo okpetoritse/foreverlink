@@ -22,6 +22,7 @@ model User {
   sentInvites       Invite[]           @relation("SentInvites")
   connections       FamilyConnection[] @relation("UserConnections")
   connectedToMe     FamilyConnection[] @relation("ConnectedTo")
+  achievements Achievement[]
 
   vendorProfile VendorProfile?
   subscription  Subscription?
@@ -262,5 +263,11 @@ model Achievement {
   id          String   @id @default(cuid())
   title       String
   description String
+  dateEarned  DateTime
+  visibility  String   @default("PUBLIC")
+  mediaUrl    String?
   createdAt   DateTime @default(now())
+
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
