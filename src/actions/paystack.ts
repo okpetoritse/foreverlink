@@ -79,9 +79,20 @@ export async function verifyPayment(reference: string) {
       return { success: false, error: "Payment not confirmed by Paystack." };
     }
 
-    const metadata = data.data.metadata.custom_fields;
-    const userId = metadata.find((f: any) => f.variable_name === "user_id")?.value;
-    const tier = metadata.find((f: any) => f.variable_name === "tier")?.value;
+    // const metadata = data.data.metadata.custom_fields;
+    // const userId = metadata.find((f: any) => f.variable_name === "user_id")?.value;
+    // const tier = metadata.find((f: any) => f.variable_name === "tier")?.value;
+
+    type PaystackField = {
+  display_name: string;
+  variable_name: string;
+  value: string;
+};
+
+const metadata = data.data.metadata.custom_fields as PaystackField[];
+
+const userId = metadata.find((f) => f.variable_name === "user_id")?.value;
+const tier = metadata.find((f) => f.variable_name === "tier")?.value;
 
     if (!userId || !tier) throw new Error("Missing metadata in transaction.");
 
@@ -95,7 +106,7 @@ export async function verifyPayment(reference: string) {
       await tx.subscription.create({
         data: {
           userId,
-          tier: tier.toUpperCase(),
+          tier: (tier as string).toUpperCase(),
           status: "ACTIVE",
         },
       });
