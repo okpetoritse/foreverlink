@@ -1,6 +1,7 @@
 "use server";
 
 import { auth, prisma } from "@/auth";
+import { Prisma } from "@prisma/client";
 
 export async function createCheckoutSession(tier: "VENDOR_VERIFIED" | "VENDOR_ELITE") {
   try {
@@ -85,7 +86,7 @@ export async function verifyPayment(reference: string) {
     if (!userId || !tier) throw new Error("Missing metadata in transaction.");
 
     // The Professional Atomic Transaction
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const existing = await tx.subscription.findUnique({ where: { userId } });
       if (existing) return; 
 
