@@ -127,3 +127,5 @@ const tier = metadata.find((f) => f.variable_name === "tier")?.value;
     return { success: false, error: "System failed to process upgrade." };
   }
 }
+
+// forcing vercel update for soft launch
