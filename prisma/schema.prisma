@@ -1,0 +1,259 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// 1. The Core Identity (Users/Stewards)
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  birthYear     String?
+  isDeceased    Boolean   @default(false)
+  role          String    @default("MEMBER") // e.g., STEWARD, MEMBER, MINOR
+  createdAt     DateTime  @default(now())
+
+  // Network Relations
+  sentInvites       Invite[]           @relation("SentInvites")
+  connections       FamilyConnection[] @relation("UserConnections")
+  connectedToMe     FamilyConnection[] @relation("ConnectedTo")
+
+  vendorProfile VendorProfile?
+  subscription  Subscription?
+
+  accounts      Account[]
+  sessions      Session[]
+  
+  // Master Architecture Relations
+  milestones    Milestone[]
+  vaults        TimeVault[]
+  comments      Comment[]
+  likes         Like[]
+
+  // 🌐 Network Connections
+  ownedConnections Connection[] @relation("TimelineOwner")
+  connectedTo      Connection[] @relation("ConnectedRelative")
+}
+
+// 2. The Master Milestone (The Unified Timeline & Achievements)
+model Milestone {
+  id        String   @id @default(cuid())
+  title     String
+  content   String
+  type      String   @default("MEMORY")
+  clearance String   @default("EXTENDED")
+  mediaUrls  String[]
+  createdAt DateTime @default(now())
+  
+  authorId  String
+  author    User     @relation(fields: [authorId], references: [id], onDelete: Cascade)
+
+  // Social Engine Connections
+  likes     Like[]
+  comments  Comment[]
+}
+
+// 3. The Social Engine (Likes & Comments)
+model Like {
+  id          String    @id @default(cuid())
+  createdAt   DateTime  @default(now())
+
+  milestoneId String
+  milestone   Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([milestoneId, userId]) // Physically prevents starring the same memory twice
+}
+
+model Comment {
+  id          String    @id @default(cuid())
+  text        String
+  createdAt   DateTime  @default(now())
+
+  milestoneId String
+  milestone   Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  userId      String
+  author      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// 4. The Time Vaults
+model TimeVault {
+  id         String   @id @default(cuid())
+  title      String
+  mediaUrl   String?  
+  content    String?
+  isSealed   Boolean  @default(true)
+  unlockDate DateTime 
+  targetGen  Int?     
+
+  creatorId  String
+  creator    User     @relation(fields: [creatorId], references: [id])
+}
+
+// 5. The Family Links (No-Breakage Logic)
+model FamilyLink {
+  id           String @id @default(cuid())
+  parentId     String
+  childId      String
+  relationship String @default("BIOLOGICAL") 
+
+  @@unique([parentId, childId]) 
+}
+
+// 6. The Network Connections (Timeline Bridges)
+model Connection {
+  id               String   @id @default(cuid())
+  ownerId          String
+  owner            User     @relation("TimelineOwner", fields: [ownerId], references: [id], onDelete: Cascade)
+  connectedUserId  String
+  connectedUser    User     @relation("ConnectedRelative", fields: [connectedUserId], references: [id], onDelete: Cascade)
+  relationshipType String   
+  createdAt        DateTime @default(now())
+  accessLevel      String   @default("EXTENDED")
+
+  @@unique([ownerId, connectedUserId]) 
+}
+
+// --- NEXTAUTH STANDARD MODELS ---
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+  @@unique([identifier, token])
+}
+
+// ==========================================
+// 🚀 PHASE 3: THE FINANCIAL ECOSYSTEM
+// ==========================================
+
+enum PlanTier {
+  FREE
+  VAULT_PREMIUM     // $4.99/mo (B2C)
+  VENDOR_VERIFIED   // $15/mo (B2B Tier 1)
+  VENDOR_ELITE      // $49/mo (B2B Tier 2)
+}
+
+enum SubStatus {
+  ACTIVE
+  CANCELED
+  PAST_DUE
+}
+
+// 1. The Business Directory Profile
+model VendorProfile {
+  id           String  @id @default(cuid())
+  businessName String
+  category     String  // e.g., "Estate Law", "Photography"
+  description  String? @db.Text
+  websiteUrl   String?
+  isVerified   Boolean @default(false) // Flips to true when they pay
+
+  // Links directly to the human who owns the business
+  userId       String  @unique
+  user         User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
+// 2. The Stripe Payment Ticket
+model Subscription {
+  id                   String    @id @default(cuid())
+  stripeCustomerId     String?   @unique // Links to their bank/credit card
+  stripeSubscriptionId String?   @unique
+  tier                 PlanTier  @default(FREE)
+  status               SubStatus @default(ACTIVE)
+  currentPeriodEnd     DateTime? // When their next $49 is due
+
+  userId               String    @unique
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+// ==========================================
+// 🚀 PHASE 4: THE NETWORK ENGINE (VIRAL GROWTH)
+// ==========================================
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  REVOKED
+  EXPIRED
+}
+
+enum ClearanceLevel {
+  INNER       // Bypasses privacy locks
+  EXTENDED    // Respects standard restrictions
+}
+
+// 1. The Cryptographic Invite Ticket
+model Invite {
+  id             String         @id @default(cuid())
+  email          String
+  token          String         @unique // The secure hash for the email link
+  relationship   String         // e.g., "Sister", "Father"
+  clearance      ClearanceLevel @default(EXTENDED)
+  status         InviteStatus   @default(PENDING)
+  expiresAt      DateTime
+
+  // The person who sent the invite
+  inviterId      String
+  inviter        User           @relation("SentInvites", fields: [inviterId], references: [id], onDelete: Cascade)
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+}
+
+// 2. The Permanent Lineage Bridge
+model FamilyConnection {
+  id               String         @id @default(cuid())
+  relationship     String         // e.g., "Sister"
+  clearance        ClearanceLevel @default(EXTENDED)
+  
+  // The owner of this connection
+  userId           String
+  user             User           @relation("UserConnections", fields: [userId], references: [id], onDelete: Cascade)
+  
+  // The actual family member they are connected to
+  connectedUserId  String
+  connectedUser    User           @relation("ConnectedTo", fields: [connectedUserId], references: [id], onDelete: Cascade)
+
+  createdAt        DateTime       @default(now())
+
+  // Prevents adding the same sister twice
+  @@unique([userId, connectedUserId]) 
+}
