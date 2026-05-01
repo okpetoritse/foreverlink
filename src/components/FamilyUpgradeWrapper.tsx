@@ -9,5 +9,5 @@ const FamilyUpgradeButton = dynamic(
 );
 
 export default function FamilyUpgradeWrapper({ userId, email }: { userId: string, email: string }) {
-  return <FamilyUpgradeButton userId="{userId}" email="{email}"/>;
+  return <FamilyUpgradeButton userId={userId} email={email}/>;
 }

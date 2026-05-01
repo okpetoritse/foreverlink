@@ -26,7 +26,10 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
   providers: [
     // NextAuth v5 automatically finds AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET in your .env
-    Google(), 
+    Google({
+      clientId: process.env.AUTH_GOOGLE_ID || "",
+      clientSecret: process.env.AUTH_GOOGLE_SECRET || "",
+    }),
   ],
   pages: {
     signIn: "/login",

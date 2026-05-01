@@ -14,8 +14,10 @@ model User {
   emailVerified DateTime?
   image         String?
   birthYear     String?
+  stars Star[]
   isDeceased    Boolean   @default(false)
   role          String    @default("MEMBER") // e.g., STEWARD, MEMBER, MINOR
+  planTier      PlanTier  @default(FREE)
   createdAt     DateTime  @default(now())
 
   // Network Relations
@@ -74,15 +76,18 @@ model Like {
 }
 
 model Comment {
-  id          String    @id @default(cuid())
-  text        String
-  createdAt   DateTime  @default(now())
+  id            String   @id @default(cuid())
+  text          String
+  createdAt     DateTime @default(now())
 
-  milestoneId String
-  milestone   Milestone @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+  userId        String
+  author        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  userId      String
-  author      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  milestoneId   String?  
+  milestone     Milestone? @relation(fields: [milestoneId], references: [id], onDelete: Cascade)
+
+  achievementId String?
+  achievement   Achievement? @relation(fields: [achievementId], references: [id], onDelete: Cascade)
 }
 
 // 4. The Time Vaults
@@ -266,8 +271,23 @@ model Achievement {
   dateEarned  DateTime
   visibility  String   @default("PUBLIC")
   mediaUrl    String?
+  comments Comment[]
   createdAt   DateTime @default(now())
+  stars Star[]
 
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Star {
+  id             String   @id @default(cuid())
+  createdAt      DateTime @default(now())
+
+  userId         String
+  achievementId  String
+
+  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement    Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
 }

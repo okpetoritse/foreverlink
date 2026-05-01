@@ -1,7 +1,8 @@
 "use server";
 
 import { auth, prisma } from "@/auth";
-import { Prisma } from "@prisma/client";
+// import { Prisma } from "@prisma/client";
+import { Prisma, PlanTier } from "@prisma/client";
 
 export async function createCheckoutSession(tier: "VENDOR_VERIFIED" | "VENDOR_ELITE") {
   try {
@@ -106,7 +107,7 @@ const tier = metadata.find((f) => f.variable_name === "tier")?.value;
       await tx.subscription.create({
         data: {
           userId,
-          tier: (tier as string).toUpperCase(),
+          tier: tier as PlanTier,
           status: "ACTIVE",
         },
       });
