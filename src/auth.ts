@@ -22,6 +22,8 @@ function sanitizeEnvValue(value: string | undefined, key: string) {
 process.env.NEXTAUTH_URL = sanitizeEnvValue(process.env.NEXTAUTH_URL, "NEXTAUTH_URL");
 process.env.AUTH_GOOGLE_ID = sanitizeEnvValue(process.env.AUTH_GOOGLE_ID, "AUTH_GOOGLE_ID");
 process.env.AUTH_GOOGLE_SECRET = sanitizeEnvValue(process.env.AUTH_GOOGLE_SECRET, "AUTH_GOOGLE_SECRET");
+process.env.AUTH_SECRET = sanitizeEnvValue(process.env.AUTH_SECRET, "AUTH_SECRET");
+process.env.NEXTAUTH_SECRET = sanitizeEnvValue(process.env.NEXTAUTH_SECRET, "NEXTAUTH_SECRET");
 
 // ==========================================
 // 🚀 THE PRISMA SINGLETON (Fixes Ghost Connections)
@@ -38,6 +40,7 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 // ==========================================
 export const { handlers, signIn, signOut, auth } = NextAuth({
   adapter: PrismaAdapter(prisma),
+  secret: process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET,
   providers: [
     // NextAuth v5 automatically finds AUTH_GOOGLE_ID and AUTH_GOOGLE_SECRET in your .env
     Google({
