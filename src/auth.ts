@@ -25,6 +25,13 @@ process.env.AUTH_GOOGLE_SECRET = sanitizeEnvValue(process.env.AUTH_GOOGLE_SECRET
 process.env.AUTH_SECRET = sanitizeEnvValue(process.env.AUTH_SECRET, "AUTH_SECRET");
 process.env.NEXTAUTH_SECRET = sanitizeEnvValue(process.env.NEXTAUTH_SECRET, "NEXTAUTH_SECRET");
 
+if (!process.env.NEXTAUTH_URL && process.env.VERCEL_URL) {
+  const hostname = process.env.VERCEL_URL.replace(/^https?:\/\//, "");
+  process.env.NEXTAUTH_URL = `https://${hostname}`;
+}
+
+console.log("[NextAuth env] NEXTAUTH_URL=", !!process.env.NEXTAUTH_URL, "AUTH_GOOGLE_ID=", !!process.env.AUTH_GOOGLE_ID, "AUTH_GOOGLE_SECRET=", !!process.env.AUTH_GOOGLE_SECRET, "AUTH_SECRET=", !!(process.env.AUTH_SECRET || process.env.NEXTAUTH_SECRET));
+
 // ==========================================
 // 🚀 THE PRISMA SINGLETON (Fixes Ghost Connections)
 // ==========================================
