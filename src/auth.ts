@@ -9,6 +9,20 @@ import { Pool } from "pg";
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const adapter = new PrismaPg(pool);
 
+// Sanitize environment values that may have been entered as full assignments
+function sanitizeEnvValue(value: string | undefined, key: string) {
+  if (!value) return value;
+  const trimmed = value.trim();
+  if (trimmed.startsWith(`${key}=`)) {
+    return trimmed.slice(key.length + 1).trim().replace(/^"|"$/g, "").replace(/^'|'$/g, "");
+  }
+  return trimmed.replace(/^"|"$/g, "").replace(/^'|'$/g, "");
+}
+
+process.env.NEXTAUTH_URL = sanitizeEnvValue(process.env.NEXTAUTH_URL, "NEXTAUTH_URL");
+process.env.AUTH_GOOGLE_ID = sanitizeEnvValue(process.env.AUTH_GOOGLE_ID, "AUTH_GOOGLE_ID");
+process.env.AUTH_GOOGLE_SECRET = sanitizeEnvValue(process.env.AUTH_GOOGLE_SECRET, "AUTH_GOOGLE_SECRET");
+
 // ==========================================
 // 🚀 THE PRISMA SINGLETON (Fixes Ghost Connections)
 // ==========================================
