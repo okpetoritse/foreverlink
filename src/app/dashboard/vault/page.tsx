@@ -1,6 +1,7 @@
 import { auth, prisma } from "@/auth";
 import SealVaultModal from "./SealVaultModal";
 import Link from "next/link";
+import VaultTimer from "@/components/VaultTimer";
 
 export default async function TimeVaultPage() {
   const session = await auth();
@@ -111,13 +112,19 @@ export default async function TimeVaultPage() {
 
                     <h2 className="text-xl font-serif text-white mb-6 truncate px-2">{vault.title}</h2>
 
-                    {/* Unlock Date Display */}
-                    <div className={`bg-black/30 rounded-lg p-3 border ${isUnlocked ? 'border-emerald-500/20' : 'border-white/5'}`}>
-                      <p className="text-[10px] text-[#F5F5DC]/50 uppercase tracking-widest mb-1">Target Date</p>
-                      <p className={`font-mono text-sm ${isUnlocked ? 'text-emerald-400' : 'text-[#D4AF37]'} font-medium`}>
-                        {new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(vault.unlockDate)}
-                      </p>
-                    </div>
+                    {/* Unlock Date Display / Live Timer */}
+{isUnlocked ? (
+  <div className="bg-black/30 rounded-lg p-3 border border-emerald-500/20">
+    <p className="text-[10px] text-[#F5F5DC]/50 uppercase tracking-widest mb-1">Unlocked On</p>
+    <p className="font-mono text-sm text-emerald-400 font-medium">
+      {new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(vault.unlockDate)}
+    </p>
+  </div>
+) : (
+  <div className="transform scale-75 origin-top -mb-8 mt-2">
+    <VaultTimer targetDate={vault.unlockDate.toISOString()} />
+  </div>
+)}
                   </div>
                   
                   {/* Bottom Action Button (Only visible if unlocked) */}
