@@ -112,30 +112,39 @@ export default async function TimeVaultPage() {
 
                     <h2 className="text-xl font-serif text-white mb-6 truncate px-2">{vault.title}</h2>
 
-                    {/* Unlock Date Display / Live Timer */}
-{isUnlocked ? (
-  <div className="bg-black/30 rounded-lg p-3 border border-emerald-500/20">
-    <p className="text-[10px] text-[#F5F5DC]/50 uppercase tracking-widest mb-1">Unlocked On</p>
-    <p className="font-mono text-sm text-emerald-400 font-medium">
-      {new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(vault.unlockDate)}
-    </p>
-  </div>
-) : (
-  <div className="transform scale-75 origin-top -mb-8 mt-2">
-    <VaultTimer targetDate={vault.unlockDate.toISOString()} />
-  </div>
-)}
+                    {/* Unlock Date Display & Live Timer */}
+                    <div className={`bg-black/30 rounded-lg p-3 border ${isUnlocked ? 'border-emerald-500/20' : 'border-white/5'}`}>
+                      {isUnlocked ? (
+                        <>
+                          <p className="text-[10px] text-[#F5F5DC]/50 uppercase tracking-widest mb-1">Unlocked On</p>
+                          <p className="font-mono text-sm text-emerald-400 font-medium">
+                            {new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(vault.unlockDate)}
+                          </p>
+                        </>
+                      ) : (
+                        <>
+                          <p className="text-[10px] text-[#F5F5DC]/50 uppercase tracking-widest mb-1 text-center">Target Date</p>
+                          <p className="font-mono text-sm text-[#D4AF37] font-medium text-center mb-4">
+                            {new Intl.DateTimeFormat('en-US', { dateStyle: 'long' }).format(vault.unlockDate)}
+                          </p>
+                          {/* 🚀 Here is the new Compact Timer! */}
+                          <div className="border-t border-white/10 pt-3">
+                            <VaultTimer targetDate={vault.unlockDate.toISOString()} compact={true} />
+                          </div>
+                        </>
+                      )}
+                    </div>
                   </div>
                   
                   {/* Bottom Action Button (Only visible if unlocked) */}
                   {isUnlocked && (
                     <div className="p-4 border-t border-emerald-500/20 bg-emerald-500/5">
                       <Link 
-  href={`/dashboard/vault/${vault.id}`} 
-  className="block w-full text-center bg-teal-900/20 text-teal-400 font-bold py-3 rounded-lg border border-teal-500/30 hover:bg-teal-500 hover:text-[#0A192F] transition-colors"
->
-  View Contents
-</Link>
+                        href={`/dashboard/vault/${vault.id}`} 
+                        className="block w-full text-center bg-teal-900/20 text-teal-400 font-bold py-3 rounded-lg border border-teal-500/30 hover:bg-teal-500 hover:text-[#0A192F] transition-colors"
+                      >
+                        View Contents
+                      </Link>
                     </div>
                   )}
 
