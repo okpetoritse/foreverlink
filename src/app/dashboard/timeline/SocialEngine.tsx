@@ -48,23 +48,30 @@ export default function SocialEngine({
         ))}
 
         {/* Input Area */}
+        {/* Input Area */}
         <form 
           ref={formRef}
           action={async (formData) => {
             await addComment(formData);
             formRef.current?.reset(); // Clears the input after posting
           }} 
-          className="flex gap-3 pt-2"
+          /* 🚀 FIX 1: Ensure the form takes full width */
+          className="flex items-center gap-2 w-full pt-4"
         >
           <input type="hidden" name="milestoneId" value={milestoneId} />
           <input 
             type="text" 
             name="text"
             required
-            placeholder="Leave a message for the archive..." 
-            className="flex-1 bg-black/40 border border-[#233554] rounded-md px-4 py-2.5 text-sm text-[#CCD6F6] focus:border-[#D4AF37] focus:outline-none transition-colors"
+            placeholder="Leave a message..." 
+            /* 🚀 FIX 2: min-w-0 ensures the input can shrink on tiny screens */
+            className="flex-1 min-w-0 bg-black/40 border border-[#233554] rounded-md px-3 py-3 text-xs text-[#CCD6F6] focus:border-[#D4AF37] focus:outline-none transition-colors"
           />
-          <button type="submit" className="px-6 py-2.5 text-xs font-bold uppercase tracking-widest text-[#D4AF37] border border-[#D4AF37]/50 rounded-md hover:bg-[#D4AF37]/10 transition-colors">
+          <button 
+            type="submit" 
+            /* 🚀 FIX 3: shrink-0 acts as an iron wall, protecting the button from being squished */
+            className="shrink-0 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-[#D4AF37] border border-[#D4AF37]/50 rounded-md hover:bg-[#D4AF37]/10 transition-colors"
+          >
             Post
           </button>
         </form>

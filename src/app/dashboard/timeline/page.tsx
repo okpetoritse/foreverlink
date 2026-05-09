@@ -46,10 +46,24 @@ export default async function TimelinePage() {
               Your archive is currently empty. Establish your first milestone to begin your legacy.
             </div>
           ) : (
-            milestones.map((item) => {
+           milestones.map((item: any) => {
               // Calculate social states
-              const likesCount = item.likes.length;
-              const hasLiked = item.likes.some(like => like.userId === userId);
+              const likesCount = item.likes?.length || 0;
+              const hasLiked = item.likes?.some((like: any) => like.userId === userId);
+
+              // 🚀 THE BULLETPROOF EXTRACTOR: 
+              // This guarantees we find your images no matter how Prisma formats them
+              let mediaList: string[] = [];
+              
+              if (item.mediaUrls) {
+                if (Array.isArray(item.mediaUrls)) {
+                  mediaList = item.mediaUrls; // If database natively uses arrays
+                } else if (typeof item.mediaUrls === 'string' && item.mediaUrls.trim() !== '') {
+                  mediaList = item.mediaUrls.split(','); // If it's a comma-separated string
+                }
+              } else if (item.media && typeof item.media === 'string' && item.media.trim() !== '') {
+                mediaList = item.media.split(',');
+              }
 
               return (
                 <div key={item.id} className="relative group">
@@ -64,7 +78,7 @@ export default async function TimelinePage() {
                       <div className="flex flex-wrap items-center gap-4">
                         <h3 className="text-2xl font-serif font-bold text-white tracking-wide">{item.title}</h3>
                         <span className="text-[10px] px-3 py-1 bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-[#D4AF37] rounded-full uppercase tracking-wider">
-                          {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(item.createdAt)}
+                          {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium' }).format(new Date(item.createdAt))}
                         </span>
                       </div>
                       
@@ -79,21 +93,26 @@ export default async function TimelinePage() {
                       {item.content}
                     </p>
 
-                    {/* 📸 SMART MEDIA GALLERY: Now using 'item' to match your loop */}
-                    {item.mediaUrls && item.mediaUrls.length > 0 && (
-                      <div className="mt-4 mb-6">
-                        <div className={`flex gap-3 pb-2 ${item.mediaUrls.length > 1 ? 'overflow-x-auto snap-x' : ''}`}>
-                          {item.mediaUrls.map((url, index) => (
-                            <div key={index} className="relative shrink-0 snap-center">
+                    {/* 📸 SMART MEDIA GALLERY */}
+                    {mediaList.length > 0 && (
+                      <div className="mt-4 mb-6 w-full max-w-full">
+                        <div className={`flex gap-3 pb-2 ${mediaList.length > 1 ? 'overflow-x-auto snap-x custom-scrollbar' : ''}`}>
+                          {mediaList.map((url, index) => (
+                            <div 
+                              key={index} 
+                              className={`relative shrink-0 snap-center ${mediaList.length > 1 ? 'w-[90%] sm:w-[80%]' : 'w-full'}`}
+                            >
                               {url.match(/\.(mp4|webm|ogg|mov)$/i) ? (
-                                <video controls className="max-h-80 w-auto rounded-lg border border-white/10">
+                                /* 🚀 THE DESKTOP FIX: max-h-[700px] and object-contain */
+                                <video controls className="w-full h-auto max-h-[400px] md:max-h-[700px] object-contain bg-[#050B14] rounded-lg border border-white/10">
                                   <source src={url} />
                                 </video>
                               ) : (
+                                /* 🚀 THE DESKTOP FIX: max-h-[700px] and object-contain */
                                 <img 
                                   src={url} 
                                   alt="Archive Media" 
-                                  className="max-h-80 w-auto rounded-lg border border-white/10 object-contain" 
+                                  className="w-full h-auto max-h-[400px] md:max-h-[700px] object-contain bg-[#050B14] rounded-lg border border-white/10" 
                                 />
                               )}
                             </div>
@@ -107,7 +126,7 @@ export default async function TimelinePage() {
                       milestoneId={item.id} 
                       likesCount={likesCount} 
                       hasLiked={hasLiked} 
-                      comments={item.comments} 
+                      comments={item.comments || []} 
                     />
 
                   </div>

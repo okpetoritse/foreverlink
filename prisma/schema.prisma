@@ -214,6 +214,10 @@ model Subscription {
 // 🚀 PHASE 4: THE NETWORK ENGINE (VIRAL GROWTH)
 // ==========================================
 
+// ==========================================
+// 🚀 PHASE 4: THE NETWORK ENGINE (VIRAL GROWTH)
+// ==========================================
+
 enum InviteStatus {
   PENDING
   ACCEPTED
@@ -226,12 +230,23 @@ enum ClearanceLevel {
   EXTENDED    // Respects standard restrictions
 }
 
+// 🚀 THE FIX: Strict structural directions for the Auto-Tree Engine
+enum RelType {
+  PARENT
+  CHILD
+  SPOUSE
+  SIBLING
+}
+
 // 1. The Cryptographic Invite Ticket
 model Invite {
   id             String         @id @default(cuid())
   email          String
   token          String         @unique // The secure hash for the email link
-  relationship   String         // e.g., "Sister", "Father"
+  
+  // 🚀 Now uses the strict enum instead of a messy String
+  relationship   RelType        
+  
   clearance      ClearanceLevel @default(EXTENDED)
   status         InviteStatus   @default(PENDING)
   expiresAt      DateTime
@@ -247,20 +262,22 @@ model Invite {
 // 2. The Permanent Lineage Bridge
 model FamilyConnection {
   id               String         @id @default(cuid())
-  relationship     String         // e.g., "Sister"
+  
+  // 🚀 Now uses the strict enum to tell the UI where to draw the line
+  relationship     RelType        
   clearance        ClearanceLevel @default(EXTENDED)
   
-  // The owner of this connection
+  // The owner of this connection (e.g., You)
   userId           String
   user             User           @relation("UserConnections", fields: [userId], references: [id], onDelete: Cascade)
   
-  // The actual family member they are connected to
+  // The actual family member they are connected to (e.g., Glory)
   connectedUserId  String
   connectedUser    User           @relation("ConnectedTo", fields: [connectedUserId], references: [id], onDelete: Cascade)
 
   createdAt        DateTime       @default(now())
 
-  // Prevents adding the same sister twice
+  // Prevents adding the same person twice
   @@unique([userId, connectedUserId]) 
 }
 
@@ -271,23 +288,23 @@ model Achievement {
   dateEarned  DateTime
   visibility  String   @default("PUBLIC")
   mediaUrl    String?
-  comments Comment[]
+  comments    Comment[]
   createdAt   DateTime @default(now())
-  stars Star[]
+  stars       Star[]
 
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Star {
-  id             String   @id @default(cuid())
-  createdAt      DateTime @default(now())
+  id            String   @id @default(cuid())
+  createdAt     DateTime @default(now())
 
-  userId         String
-  achievementId  String
+  userId        String
+  achievementId String
 
-  user           User        @relation(fields: [userId], references: [id], onDelete: Cascade)
-  achievement    Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
 
   @@unique([userId, achievementId])
 }

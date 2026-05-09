@@ -26,7 +26,7 @@ export default function AddMilestoneModal() {
         className="bg-[#D4AF37] text-[#0A192F] px-4 md:px-6 py-2.5 rounded-md font-bold hover:bg-white transition-all shadow-[0_0_15px_rgba(212,175,55,0.3)] flex items-center gap-2 text-sm md:text-base w-full md:w-auto justify-center"
       >
         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4"></path></svg>
-        Archive Milestone
+        Add Family Member
       </button>
 
       {isModalOpen && (

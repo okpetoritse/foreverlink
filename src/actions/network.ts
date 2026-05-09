@@ -3,105 +3,46 @@
 import { auth, prisma } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { Resend } from "resend";
+import { RelType, ClearanceLevel } from "@prisma/client";
+import crypto from "crypto";
 
-// Initialize the Email Engine
 const resend = new Resend(process.env.RESEND_API_KEY);
 
-export async function addConnection(formData: FormData) {
+// ==========================================
+// 1. THE SENDER ENGINE (Creating Invites)
+// ==========================================
+export async function sendFamilyInvite(formData: FormData) {
   const session = await auth();
   const userId = session?.user?.id;
   const senderName = session?.user?.name || "A ForeverLink Member";
 
   if (!userId) throw new Error("Unauthorized");
 
-  // 1. Extract the exact data from the form inputs
   const email = formData.get("targetEmail") as string;
-  const relationshipType = formData.get("relationshipType") as string;
-  const accessLevel = formData.get("accessLevel") as string;
+  const relationshipStr = formData.get("relationshipType") as string; 
+  const accessLevel = (formData.get("accessLevel") as ClearanceLevel) || "EXTENDED";
 
-  if (!email || !relationshipType || !accessLevel) return;
+  if (!email || !relationshipStr) return { success: false, error: "Missing required fields." };
 
-  // 2. Locate the target node in the system
-  let targetUser = await prisma.user.findUnique({ 
-    where: { email } 
-  });
+  const relationship = relationshipStr as RelType;
+  const targetUser = await prisma.user.findUnique({ where: { email } });
 
-  let isNewUser = false;
-
-  // If the user doesn't exist yet, we create a placeholder node for them
-  if (!targetUser) {
-    isNewUser = true;
-    targetUser = await prisma.user.create({
-      data: {
-        email,
-        name: "Pending Invite",
-      }
-    });
-  }
-
-  // Prevent duplicate connections from crashing the system
-  const existingConnection = await prisma.connection.findFirst({
-    where: {
-      ownerId: userId,
-      connectedUserId: targetUser.id
-    }
-  });
-
-  // 3. Establish the secure database bridge & Draw the Tree
-  if (!existingConnection) {
-    // A. Create the Security Access Connection
-    await prisma.connection.create({
-      data: {
-        ownerId: userId,
-        connectedUserId: targetUser.id,
-        relationshipType,
-        accessLevel,
-      }
-    });
-
-    // B. 🌳 SYNCHRONIZE THE VISUAL FAMILY TREE
-    // We draw the exact biological/marital lines instantly
-    if (relationshipType === "Parent") {
-      await prisma.familyLink.create({
-        data: {
-          parentId: targetUser.id, // They are the parent
-          childId: userId,         // You are the child
-          relationship: "BIOLOGICAL"
-        }
-      });
-    } 
-    else if (relationshipType === "Child") {
-      await prisma.familyLink.create({
-        data: {
-          parentId: userId,        // You are the parent
-          childId: targetUser.id,  // They are the child
-          relationship: "BIOLOGICAL"
-        }
-      });
-    }
-    else if (relationshipType === "Spouse") {
-      await prisma.familyLink.create({
-        data: {
-          parentId: userId,  
-          childId: targetUser.id,
-          relationship: "SPOUSE"
-        }
-      });
-    }
-    else if (relationshipType === "Sibling") {
-      await prisma.familyLink.create({
-        data: {
-          parentId: userId,  
-          childId: targetUser.id,
-          relationship: "SIBLING"
-        }
-      });
-    }
-  }
-
-  // 4. 🚀 THE EMAIL TRANSMISSION ENGINE 🚀
   try {
-    if (isNewUser) {
+    if (!targetUser) {
+      // COLD INVITE
+      const token = crypto.randomBytes(32).toString("hex");
+
+      await prisma.invite.create({
+        data: {
+          email,
+          token,
+          relationship,
+          clearance: accessLevel,
+          inviterId: userId,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), 
+        }
+      });
+
       await resend.emails.send({
         from: "ForeverLink Network <onboarding@resend.dev>",
         to: email,
@@ -109,66 +50,116 @@ export async function addConnection(formData: FormData) {
         html: `
           <div style="font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
             <h2 style="color: #111;">You've been invited to ForeverLink</h2>
-            <p style="color: #444; font-size: 16px;">
-              <strong>${senderName}</strong> has added you to their private network with <strong>${accessLevel}</strong> access.
-            </p>
-            <p style="color: #444; font-size: 16px;">
-              Create your account to secure your connection and view their locked archives.
-            </p>
-            <a href="http://localhost:3000/register?email=${email}" style="background: #2563eb; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 15px; font-weight: bold;">
-              Join ForeverLink
+            <p style="color: #444; font-size: 16px;"><strong>${senderName}</strong> has added you to their private family network.</p>
+            <a href="${process.env.NEXT_PUBLIC_APP_URL}/invite?token=${token}" style="background: #D4AF37; color: #000; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 15px; font-weight: bold;">
+              Accept Invitation & Join
             </a>
           </div>
         `,
       });
-      console.log(`Cold Invite sent successfully to ${email}`);
     } else {
-      await resend.emails.send({
-        from: "ForeverLink Network <onboarding@resend.dev>",
-        to: email,
-        subject: `${senderName} added you to their Network`,
-        html: `
-          <div style="font-family: sans-serif; padding: 20px; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #111;">Network Connection Updated</h2>
-            <p style="color: #444; font-size: 16px;">
-              <strong>${senderName}</strong> has just added you to their trusted network.
-            </p>
-            <a href="http://localhost:3000/dashboard/network" style="background: #000; color: #fff; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-top: 15px; font-weight: bold;">
-              View Your Network
-            </a>
-          </div>
-        `,
+      // WARM INVITE
+      const existingConnection = await prisma.familyConnection.findFirst({
+        where: { userId, connectedUserId: targetUser.id }
       });
-      console.log(`Warm Notification sent successfully to ${email}`);
-    }
-  } catch (error) {
-    console.error("🚨 Email Transmission Failed:", error);
-  }
 
-  // 5. Instantly refresh the Network Node UI
-  revalidatePath("/dashboard/network");
+      if (!existingConnection) {
+        let mirrorRelationship: RelType;
+        if (relationship === "SPOUSE") mirrorRelationship = "SPOUSE";
+        else if (relationship === "SIBLING") mirrorRelationship = "SIBLING";
+        else if (relationship === "PARENT") mirrorRelationship = "CHILD";
+        else if (relationship === "CHILD") mirrorRelationship = "PARENT";
+        else throw new Error("Invalid alignment.");
+
+        await prisma.$transaction([
+          prisma.familyConnection.create({ data: { userId, connectedUserId: targetUser.id, relationship, clearance: accessLevel } }),
+          prisma.familyConnection.create({ data: { userId: targetUser.id, connectedUserId: userId, relationship: mirrorRelationship, clearance: accessLevel } })
+        ]);
+
+        await resend.emails.send({
+          from: "ForeverLink Network <onboarding@resend.dev>",
+          to: email,
+          subject: `${senderName} established a Lineage Connection`,
+          html: `<p><strong>${senderName}</strong> has established a permanent lineage bridge with you.</p>`
+        });
+      }
+    }
+
+    revalidatePath("/dashboard/network");
+    revalidatePath("/dashboard/tree");
+    return { success: true };
+  } catch (error) {
+    return { success: false, error: "Failed to process the network connection." };
+  }
 }
 
+// ==========================================
+// 2. THE RECEIVER ENGINE (Accepting Invites)
+// ==========================================
+export async function acceptFamilyInvite(token: string) {
+  const session = await auth();
+  const currentUserId = session?.user?.id;
+
+  if (!currentUserId) return { success: false, error: "You must be logged in." };
+
+  try {
+    const invite = await prisma.invite.findUnique({ where: { token } });
+
+    if (!invite) return { success: false, error: "Invalid lineage token." };
+    if (invite.status !== "PENDING") return { success: false, error: "Invite already claimed." };
+    if (invite.expiresAt < new Date()) return { success: false, error: "Invite expired." };
+    if (invite.inviterId === currentUserId) return { success: false, error: "Cannot accept your own invite." };
+
+    let mirrorRelationship: RelType;
+    switch (invite.relationship) {
+      case "SPOUSE": mirrorRelationship = "SPOUSE"; break;
+      case "SIBLING": mirrorRelationship = "SIBLING"; break;
+      case "PARENT": mirrorRelationship = "CHILD"; break;
+      case "CHILD": mirrorRelationship = "PARENT"; break;
+      default: throw new Error("Unknown relationship.");
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // Burn the invite
+      await tx.invite.update({
+        where: { id: invite.id },
+        data: { status: "ACCEPTED" },
+      });
+      // Forward Link
+      await tx.familyConnection.create({
+        data: { userId: invite.inviterId, connectedUserId: currentUserId, relationship: invite.relationship, clearance: invite.clearance },
+      });
+      // Mirror Link
+      await tx.familyConnection.create({
+        data: { userId: currentUserId, connectedUserId: invite.inviterId, relationship: mirrorRelationship, clearance: invite.clearance },
+      });
+    });
+
+    revalidatePath("/dashboard/network");
+    revalidatePath("/dashboard/tree");
+    return { success: true };
+
+  } catch (error: any) {
+    if (error.code === 'P2002') return { success: false, error: "Connection already established." };
+    return { success: false, error: "Failed to forge connection." };
+  }
+}
+
+// ==========================================
+// 3. THE SEVER ENGINE (Removing Connections)
+// ==========================================
 export async function removeConnection(connectionId: string) {
-  // Finding the connection to remove from both tables
-  const connection = await prisma.connection.findUnique({
-    where: { id: connectionId }
-  });
+  const connection = await prisma.familyConnection.findUnique({ where: { id: connectionId } });
 
   if (connection) {
-    // Remove the security bridge
-    await prisma.connection.delete({ where: { id: connectionId } });
-    
-    // Remove the visual tree line (FamilyLink)
-    await prisma.familyLink.deleteMany({
-      where: {
-        OR: [
-          { parentId: connection.ownerId, childId: connection.connectedUserId },
-          { parentId: connection.connectedUserId, childId: connection.ownerId }
-        ]
-      }
-    });
+    await prisma.$transaction([
+      prisma.familyConnection.delete({ where: { id: connectionId } }),
+      prisma.familyConnection.deleteMany({
+        where: { userId: connection.connectedUserId, connectedUserId: connection.userId }
+      })
+    ]);
   }
   
   revalidatePath("/dashboard/network");
+  revalidatePath("/dashboard/tree");
 }
