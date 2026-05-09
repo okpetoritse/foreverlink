@@ -25,7 +25,7 @@ export default async function LegacyProfilePage(props: { params: Promise<{ userI
   // 2. 🛡️ PLACE THE VAULT FETCH HERE (Right after user fetch)
   const nextVault = await prisma.timeVault.findFirst({
     where: { 
-      userId: targetId,
+      creatorId: targetId,
       unlockDate: { gt: new Date() } 
     },
     orderBy: { unlockDate: 'asc' }
