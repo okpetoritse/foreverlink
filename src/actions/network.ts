@@ -85,10 +85,12 @@ export async function sendFamilyInvite(formData: FormData) {
       }
     }
 
-    revalidatePath("/dashboard/network");
+  revalidatePath("/dashboard/network");
     revalidatePath("/dashboard/tree");
     return { success: true };
   } catch (error) {
+    // This will print the actual Resend or Prisma error into your Vercel Logs!
+    console.error("INVITE ERROR:", error); 
     return { success: false, error: "Failed to process the network connection." };
   }
 }
